@@ -37,7 +37,7 @@ nTrain.w <- length(weekly) - nValid.w
 
 train.ts.w <- window(weekly, start = c(1,1), end = c(1,length(weekly) - nValid.w))
 valid.ts.w <- window(weekly, start = c(1,length(weekly) - nValid.w + 1))
-plot(train.ts.w, type = "l", xlab = "Time", ylab = "Price")
+plot(train.ts.w, type = "l", xlab = "Time", ylab = "Price", xlim=c(0,1300))
 lines(valid.ts.w, col = "green")
 
 #Creating train & validation set time series from 2011 onwards
@@ -46,7 +46,7 @@ nTrain.2011 <- 4534 - nValid.2011
 
 train.ts.2011 <- window(weekly, start = c(1,length(weekly) - nTrain.2011 - nValid.2011), end = c(1,length(weekly) - nValid.2011))
 valid.ts.2011 <- window(weekly, start = c(1,length(weekly) - nValid.2011 + 1))
-plot(train.ts.2011, type = "l", xlab = "Time", ylab = "Price")
+plot(train.ts.2011, type = "l", xlab = "Time", ylab = "Price", xlim=c(550,1300))
 lines(valid.ts.2011, col = "green")
 
 #Creating train & validation set for the latest year
