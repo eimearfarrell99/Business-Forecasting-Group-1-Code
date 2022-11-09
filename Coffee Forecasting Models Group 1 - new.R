@@ -18,11 +18,14 @@ data$Date <- as.Date(data$Date)
 #Complete the data and filled with average mean for the NA
 data <- data %>%
   complete(Date = seq.Date(min(Date), max(Date), by="day")) %>%
-  na_interpolation(option = "linear") 
+  na_interpolation(option = "linear")
 
-data %>% fill(Currency)
+data <- data %>% fill(Currency)
 
-#Creating time series - whole data set
+#Creating time series - whole data set with different frequencies
+daily<- ts(data$High, start = c(1), frequency = 1)
+plot(daily)
+
 weekly<- ts(data$High, start = c(1), frequency = 7)
 plot(weekly)
 autoplot(decompose(weekly, type = "additive"))
@@ -30,6 +33,15 @@ autoplot(decompose(weekly, type = "additive"))
 yearly <- ts(data$High, start = c(1), frequency = 365)
 autoplot(yearly)
 autoplot(decompose(yearly, type = "additive"))
+acf(yearly)
+pacf(yearly)
+
+##creating time series for post peak
+weekly.peak <- ts(window(data$High, start=c(4800)), frequency=7)
+plot(weekly.peak)
+autoplot(decompose(weekly.peak, type = "additive"))
+acf(weekly.peak)
+pacf(weekly.peak)
 
 #Creating train & validation set time series for the whole data set
 nValid.w <- length(weekly) * 0.25
@@ -40,13 +52,13 @@ valid.ts.w <- window(weekly, start = c(1,length(weekly) - nValid.w + 1))
 plot(train.ts.w, type = "l", xlab = "Time", ylab = "Price", xlim=c(0,1300))
 lines(valid.ts.w, col = "green")
 
-#Creating train & validation set time series from 2011 onwards
-nValid.2011 <- 1134
-nTrain.2011 <- 4534 - nValid.2011
+#Creating train & validation set time series from post peak
+nValid.2011 <- (length(weekly) - 4800) * 0.25
+nTrain.2011 <- (length(weekly) - 4800) - nValid.2011
 
 train.ts.2011 <- window(weekly, start = c(1,length(weekly) - nTrain.2011 - nValid.2011), end = c(1,length(weekly) - nValid.2011))
 valid.ts.2011 <- window(weekly, start = c(1,length(weekly) - nValid.2011 + 1))
-plot(train.ts.2011, type = "l", xlab = "Time", ylab = "Price", xlim=c(550,1300))
+plot(train.ts.2011, type = "l", xlab = "Time", ylab = "Price", xlim=c(680,1200), ylim=c(80,270))
 lines(valid.ts.2011, col = "green")
 
 #Creating train & validation set for the latest year
@@ -61,6 +73,8 @@ lines(valid.ts, col = "green")
 #Decompose the last year
 window.ts <- window(weekly, start = c(1,length(weekly) - nTrain - nValid), end = c(1,length(weekly)))
 plot(decompose(window.ts))
+pacf(window.ts, lag=13*7)
+acf(window.ts, lag=13*7)
 
 #Mean prediction
 aver.pred <- mean(train.ts)
@@ -144,11 +158,11 @@ lines(valid.ts.2011, col="green")
 accuracy(train.lm.trend.season.2011.forecast, valid.ts.2011)
 
 #tslm model with trend and seasonality on validation set
-plot(train.lm.trend.season.forecast,   
-     ylim = c(160,300 ), 
-     ylab = "Daily Price High", 
-     xlab = "Week", 
-     xlim = c(1131,1183), 
+plot(train.lm.trend.season.forecast,
+     ylim = c(160,300 ),
+     ylab = "Daily Price High",
+     xlab = "Week",
+     xlim = c(1131,1183),
      main = "Predictive Model for 3 months using Linear model with Trend and Sesonality")
 lines(valid.ts, col="green")
 text(1151, 290, "Training")
@@ -162,11 +176,11 @@ test.lm.trend.season <- tslm(window.ts ~ trend + season)
 test.lm.trend.season.forecast <- forecast(test.lm.trend.season, h = nTest)
 plot(test.lm.trend.season.forecast)
 
-plot(test.lm.trend.season.forecast, 
-     ylim = c(160,300 ), 
-     ylab = "Daily Price High", 
-     xlab = "Week", 
-     xlim = c(1131,1196), 
+plot(test.lm.trend.season.forecast,
+     ylim = c(160,300 ),
+     ylab = "Daily Price High",
+     xlab = "Week",
+     xlim = c(1131,1196),
      main = "Forecast for 3 months using Linear model with Trend and Sesonality")
 
 text(1151, 290, "Training")
@@ -174,6 +188,63 @@ text(1176, 290, "Validation")
 text(1190, 290,"Future")
 lines(valid.ts, col="green")
 lines(train.ts, col="red")
+
+##For Low Price
+
+#Creating time series - whole data set with different frequencies for low price
+daily.l<- ts(data$Low, start = c(1), frequency = 1)
+plot(daily.l)
+
+weekly.l<- ts(data$Low, start = c(1), frequency = 7)
+plot(weekly.l)
+autoplot(decompose(weekly.l, type = "additive"))
+
+yearly.l <- ts(data$Low, start = c(1), frequency = 365)
+autoplot(yearly.l)
+autoplot(decompose(yearly.l, type = "additive"))
+acf(yearly.l)
+pacf(yearly.l)
+
+#Creating train & validation set for the latest year
+train.ts.l <- window(weekly.l, start = c(1,length(weekly.l) - nTrain - nValid), end = c(1,length(weekly.l) - nValid))
+valid.ts.l <- window(weekly.l, start = c(1,length(weekly.l) - nValid + 1))
+
+#tslm model with trend and seasonality on validation set
+train.lm.trend.season.l <- tslm(train.ts.l ~ trend + season)
+train.lm.trend.season.forecast.l <- forecast(train.lm.trend.season.l, h = nValid)
+
+plot(train.lm.trend.season.forecast.l,
+     ylim = c(160,300 ),
+     ylab = "Daily Price Low",
+     xlab = "Week",
+     xlim = c(1131,1183),
+     main = "Predictive Model for 3 months using Linear model with Trend and Sesonality")
+lines(valid.ts.l, col="green")
+text(1151, 290, "Training")
+text(1176, 290, "Validation")
+
+#applying tslm(trend + season) model to 52 weeks of data to predict the next 13 weeks
+window.ts.l <- window(weekly.l, start = c(1,length(weekly.l) - nTrain - nValid), end = c(1,length(weekly.l)))
+nTest <- 13*7
+
+test.lm.trend.season.l <- tslm(window.ts.l ~ trend + season)
+test.lm.trend.season.forecast.l <- forecast(test.lm.trend.season.l, h = nTest)
+
+plot(test.lm.trend.season.forecast.l,
+     ylim = c(160,300 ),
+     ylab = "Daily Price Low",
+     xlab = "Week",
+     xlim = c(1131,1196),
+     main = "Forecast for 3 months using Linear model with Trend and Sesonality")
+
+text(1151, 290, "Training")
+text(1176, 290, "Validation")
+text(1190, 290,"Future")
+lines(valid.ts.l, col="green")
+lines(train.ts.l, col="red")
+
+#Optimal Price
+max(test.lm.trend.season.forecast$mean)
 
 ##volume time series plot##
 volume.ts <- ts(data$Volume, start=c(1), end=c(5746), freq=1)
